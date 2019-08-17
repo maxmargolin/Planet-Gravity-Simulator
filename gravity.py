@@ -7,23 +7,26 @@ import sys
 import pygame
 from pygame.locals import *
 
+# defaults
+# window sizes
 window_x = 999
 window_y = 999
+# acceleration speed
 acceleration_factor = 99
-amount_of_planets = 22
+initial_amount_of_planets = 22
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-wx","--window-x", help="x dimension of display", type=int, default=window_x)
-parser.add_argument("-wy","--window-y", help="y dimension of display", type=int, default=window_y)
-parser.add_argument("-p","--planet-amount", help="amount of planets",type=int,default=amount_of_planets)
-parser.add_argument("-ac","--acceleration-factor", help="multiplied effect of gravity on speed", type=int,default=acceleration_factor)
+parser.add_argument("-wx", "--window-x", help="x dimension of display", type=int, default=window_x)
+parser.add_argument("-wy", "--window-y", help="y dimension of display", type=int, default=window_y)
+parser.add_argument("-p", "--planet-amount", help="amount of planets", type=int, default=initial_amount_of_planets)
+parser.add_argument("-ac", "--acceleration-factor", help="multiplied effect of gravity on speed", type=int,
+                    default=acceleration_factor)
 args = parser.parse_args()
 
 window_x = args.window_x
 window_y = args.window_y
 acceleration_factor = args.acceleration_factor
-amount_of_planets = args.planet_amount
-
+initial_amount_of_planets = args.planet_amount
 
 PLANET_OPTIONS = ["moon.png", "earth.png", "sun.jpg"]
 pygame.init()
@@ -37,7 +40,7 @@ class Particle:
             self.x = x
         else:
             self.x = random.randint(10, window_x)
-        if y != None:
+        if y is not None:
             self.y = window_y - y
         else:
             self.y = random.randint(10, window_y)
@@ -49,34 +52,42 @@ class Particle:
         self.last_move = time.time()
 
 
-for x in range(amount_of_planets):
+for _ in range(initial_amount_of_planets):
     planets_list.append(Particle())
 
 
 def move():
+    """
+    change position and speed of all planets
+    """
     for P in planets_list:
         for P2 in planets_list:
             if P != P2:
-                XDiff = P.x - P2.x
-                YDiff = P.y - P2.y
-                distance = math.sqrt((XDiff ** 2) + (YDiff ** 2))
-                if distance < 10:
-                    distance = 10
+                x_diff = P.x - P2.x
+                y_diff = P.y - P2.y
+                distance_between_planets = math.sqrt((x_diff ** 2) + (y_diff ** 2))
+                if distance_between_planets < 10:
+                    distance_between_planets = 10
                 # F = (G*M*M)/(R**2)
                 # F = M*A  ->  A = F/M
                 # A = (G*M)/(R**2)
-                acceleration = 0.125 * P2.mass / (distance ** 3)
-                P.speedx -= acceleration * XDiff * acceleration_factor
-                P.speedy -= acceleration * YDiff * acceleration_factor
+                acceleration = 0.125 * P2.mass / (distance_between_planets ** 3)
+                P.speedx -= acceleration * x_diff * acceleration_factor
+                P.speedy -= acceleration * y_diff * acceleration_factor
     for P in planets_list:
-        now = time.time()
-        time_since_last_move = now - P.last_move
+        current_time = time.time()
+        time_since_last_move = current_time - P.last_move
+        #  multiplied by delta time so change depends on absolute time passed, not the speed of calculations
         P.x += P.speedx * time_since_last_move
         P.y += P.speedy * time_since_last_move
-        P.last_move = now
+        P.last_move = current_time
 
 
 def edge_bounce(planet):
+    """
+    change planet direction if it hits an edge
+    :param planet:  the planet to check for
+    """
     if planet.x > window_x - planet.radius:
         planet.x = window_x - planet.radius
         planet.speedx *= -1
@@ -92,6 +103,9 @@ def edge_bounce(planet):
 
 
 def collision_detect():
+    """
+    detect if two planets are touching each other
+    """
     for P in planets_list:
         edge_bounce(P)
         for P2 in planets_list:
@@ -113,6 +127,9 @@ def collision_detect():
 
 
 def draw():
+    """
+    redraw planets on screen
+    """
     Surface.fill((0, 0, 0))
     for P in planets_list:
         my_image = pygame.image.load(P.file)
@@ -121,7 +138,7 @@ def draw():
     pygame.display.flip()
 
 
-def GetInput():
+def get_input():
     key_stete = pygame.key.get_pressed()
     for event in pygame.event.get():
         if event.type == QUIT or key_stete[K_ESCAPE]:
@@ -132,7 +149,7 @@ def GetInput():
 def main():
     print("click screen to create more planets")
     while True:
-        GetInput()
+        get_input()
         move()
         collision_detect()
         draw()
@@ -140,6 +157,9 @@ def main():
         if event.type == pygame.MOUSEBUTTONUP:
             print("created planet at (%d, %d)" % event.pos)
             planets_list.append(Particle(event.pos[0], event.pos[1]))
+        elif event.type == QUIT:
+            pygame.quit()
+            sys.exit()
 
 
 if __name__ == '__main__':
